@@ -14,7 +14,7 @@ import {
 interface Alert {
   id: string;
   type: "motion" | "face" | "animal";
-  timestamp: Date;
+  timestamp: Date | string;
   thumbnail?: string;
   confidence?: number;
 }
@@ -54,12 +54,19 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      return "Invalid Date";
+    }
+
     return new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-    }).format(date);
+    }).format(dateObj);
   };
 
   return (
