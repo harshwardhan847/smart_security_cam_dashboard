@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Settings, RotateCw, FlipHorizontal, FlipVertical } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Settings,
+  RotateCw,
+  FlipHorizontal,
+  FlipVertical,
+  Sun,
+  Contrast,
+  Focus,
+  Zap,
+  Camera,
+  Monitor,
+  Wifi,
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 
 interface CameraControlsProps {
   settings: {
@@ -21,49 +36,175 @@ interface CameraControlsProps {
     flipHorizontal: boolean;
     flipVertical: boolean;
     rotation: number;
+    saturation?: number;
+    sharpness?: number;
+    exposure?: number;
+    whiteBalance?: string;
+    nightMode?: boolean;
+    autoFocus?: boolean;
   };
   onSettingsChange: (settings: any) => void;
+  cameraUrl?: string;
 }
 
 export const CameraControls: React.FC<CameraControlsProps> = ({
   settings,
   onSettingsChange,
+  cameraUrl,
 }) => {
+  const [isApplying, setIsApplying] = useState(false);
+  const [cameraInfo, setCameraInfo] = useState<any>(null);
+
   const updateSetting = (key: string, value: any) => {
     onSettingsChange({ ...settings, [key]: value });
   };
 
   const resolutions = [
-    { value: "QVGA", label: "QVGA (320x240)" },
-    { value: "VGA", label: "VGA (640x480)" },
-    { value: "SVGA", label: "SVGA (800x600)" },
-    { value: "XGA", label: "XGA (1024x768)" },
-    { value: "UXGA", label: "UXGA (1600x1200)" },
+    { value: "QVGA", label: "QVGA (320x240)", width: 320, height: 240 },
+    { value: "VGA", label: "VGA (640x480)", width: 640, height: 480 },
+    { value: "SVGA", label: "SVGA (800x600)", width: 800, height: 600 },
+    { value: "XGA", label: "XGA (1024x768)", width: 1024, height: 768 },
+    { value: "UXGA", label: "UXGA (1600x1200)", width: 1600, height: 1200 },
   ];
+
+  const whiteBalanceOptions = [
+    { value: "auto", label: "Auto" },
+    { value: "sunny", label: "Sunny" },
+    { value: "cloudy", label: "Cloudy" },
+    { value: "office", label: "Office" },
+    { value: "home", label: "Home" },
+  ];
+
+  // Send camera control command to ESP32-CAM
+  const sendCameraCommand = async (command: string, value?: any) => {
+    if (!cameraUrl) return;
+
+    try {
+      setIsApplying(true);
+      const url = new URL(cameraUrl);
+      const controlUrl = `${url.protocol}//${url.host}/control?var=${command}&val=${value}`;
+
+      const response = await fetch(controlUrl, {
+        method: "GET",
+        mode: "no-cors",
+      });
+
+      toast.success("Camera setting applied", {
+        description: `${command} set to ${value}`,
+      });
+    } catch (error) {
+      toast.error("Failed to apply setting", {
+        description: "Camera may not support this control",
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  };
 
   const rotateVideo = () => {
     const newRotation = (settings.rotation + 90) % 360;
     updateSetting("rotation", newRotation);
   };
 
+  const applyResolution = (resolution: string) => {
+    updateSetting("resolution", resolution);
+    const res = resolutions.find((r) => r.value === resolution);
+    if (res) {
+      sendCameraCommand("framesize", res.value);
+    }
+  };
+
+  const applyBrightness = (brightness: number) => {
+    updateSetting("brightness", brightness);
+    sendCameraCommand("brightness", brightness);
+  };
+
+  const applyContrast = (contrast: number) => {
+    updateSetting("contrast", contrast);
+    sendCameraCommand("contrast", contrast);
+  };
+
+  const applySaturation = (saturation: number) => {
+    updateSetting("saturation", saturation);
+    sendCameraCommand("saturation", saturation);
+  };
+
+  const applySharpness = (sharpness: number) => {
+    updateSetting("sharpness", sharpness);
+    sendCameraCommand("sharpness", sharpness);
+  };
+
+  const applyExposure = (exposure: number) => {
+    updateSetting("exposure", exposure);
+    sendCameraCommand("exposure", exposure);
+  };
+
+  const applyWhiteBalance = (whiteBalance: string) => {
+    updateSetting("whiteBalance", whiteBalance);
+    sendCameraCommand("awb", whiteBalance === "auto" ? 1 : 0);
+  };
+
+  const toggleNightMode = (enabled: boolean) => {
+    updateSetting("nightMode", enabled);
+    sendCameraCommand("night_vision", enabled ? 1 : 0);
+  };
+
+  const toggleAutoFocus = (enabled: boolean) => {
+    updateSetting("autoFocus", enabled);
+    sendCameraCommand("autofocus", enabled ? 1 : 0);
+  };
+
+  const resetToDefaults = () => {
+    const defaults = {
+      resolution: "VGA",
+      brightness: 0,
+      contrast: 0,
+      saturation: 0,
+      sharpness: 0,
+      exposure: 0,
+      whiteBalance: "auto",
+      nightMode: false,
+      autoFocus: true,
+    };
+
+    Object.entries(defaults).forEach(([key, value]) => {
+      updateSetting(key, value);
+      if (key !== "resolution") {
+        sendCameraCommand(key, value);
+      }
+    });
+
+    toast.success("Camera reset to defaults");
+  };
+
   return (
-    <Card className="gradient-card border-border">
-      <CardHeader>
+    <Card className="gradient-card border-border shadow-lg">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-foreground">
           <Settings className="w-5 h-5 text-primary" />
-          Camera Controls
+          <span className="text-lg">Camera Controls</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetToDefaults}
+              disabled={isApplying}
+              className="text-xs"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Reset
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Resolution */}
         <div className="space-y-2">
-          <Label className="text-sm font-medium text-foreground">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Monitor className="w-4 h-4" />
             Resolution
           </Label>
-          <Select
-            value={settings.resolution}
-            onValueChange={(value) => updateSetting("resolution", value)}
-          >
+          <Select value={settings.resolution} onValueChange={applyResolution}>
             <SelectTrigger className="bg-input border-border">
               <SelectValue />
             </SelectTrigger>
@@ -79,21 +220,22 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 
         {/* Transform Controls */}
         <div className="space-y-4">
-          <Label className="text-sm font-medium text-foreground">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <RotateCw className="w-4 h-4" />
             Video Transform
           </Label>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               variant={settings.flipHorizontal ? "default" : "secondary"}
               size="sm"
               onClick={() =>
                 updateSetting("flipHorizontal", !settings.flipHorizontal)
               }
-              className="flex-1"
+              className="flex flex-col items-center gap-1 h-auto py-3"
             >
-              <FlipHorizontal className="w-4 h-4 mr-1" />
-              Flip H
+              <FlipHorizontal className="w-4 h-4" />
+              <span className="text-xs">Flip H</span>
             </Button>
 
             <Button
@@ -102,61 +244,193 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
               onClick={() =>
                 updateSetting("flipVertical", !settings.flipVertical)
               }
-              className="flex-1"
+              className="flex flex-col items-center gap-1 h-auto py-3"
             >
-              <FlipVertical className="w-4 h-4 mr-1" />
-              Flip V
+              <FlipVertical className="w-4 h-4" />
+              <span className="text-xs">Flip V</span>
             </Button>
 
             <Button
               variant="secondary"
               size="sm"
               onClick={rotateVideo}
-              className="flex-1"
+              className="flex flex-col items-center gap-1 h-auto py-3"
             >
-              <RotateCw className="w-4 h-4 mr-1" />
-              {settings.rotation}°
+              <RotateCw className="w-4 h-4" />
+              <span className="text-xs">{settings.rotation}°</span>
             </Button>
           </div>
         </div>
 
-        {/* Brightness */}
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <Label className="text-sm font-medium text-foreground">
-              Brightness
-            </Label>
-            <span className="text-sm text-muted-foreground">
-              {settings.brightness}%
-            </span>
+        {/* Image Quality Controls */}
+        <div className="space-y-4">
+          <Label className="text-sm font-semibold text-foreground">
+            Image Quality
+          </Label>
+
+          {/* Brightness */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Sun className="w-4 h-4" />
+                Brightness
+              </Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {settings.brightness || 0}
+              </span>
+            </div>
+            <Slider
+              value={[settings.brightness || 0]}
+              onValueChange={(value) => applyBrightness(value[0])}
+              min={-2}
+              max={2}
+              step={1}
+              className="w-full"
+            />
           </div>
-          <Slider
-            value={[settings.brightness]}
-            onValueChange={(value) => updateSetting("brightness", value[0])}
-            max={100}
-            step={1}
-            className="w-full"
-          />
+
+          {/* Contrast */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Contrast className="w-4 h-4" />
+                Contrast
+              </Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {settings.contrast || 0}
+              </span>
+            </div>
+            <Slider
+              value={[settings.contrast || 0]}
+              onValueChange={(value) => applyContrast(value[0])}
+              min={-2}
+              max={2}
+              step={1}
+              className="w-full"
+            />
+          </div>
+
+          {/* Saturation */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Saturation
+              </Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {settings.saturation || 0}
+              </span>
+            </div>
+            <Slider
+              value={[settings.saturation || 0]}
+              onValueChange={(value) => applySaturation(value[0])}
+              min={-2}
+              max={2}
+              step={1}
+              className="w-full"
+            />
+          </div>
+
+          {/* Sharpness */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Focus className="w-4 h-4" />
+                Sharpness
+              </Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {settings.sharpness || 0}
+              </span>
+            </div>
+            <Slider
+              value={[settings.sharpness || 0]}
+              onValueChange={(value) => applySharpness(value[0])}
+              min={-2}
+              max={2}
+              step={1}
+              className="w-full"
+            />
+          </div>
         </div>
 
-        {/* Contrast */}
-        <div className="space-y-3">
-          <div className="flex justify-between">
+        {/* Advanced Controls */}
+        <div className="space-y-4">
+          <Label className="text-sm font-semibold text-foreground">
+            Advanced
+          </Label>
+
+          {/* White Balance */}
+          <div className="space-y-2">
             <Label className="text-sm font-medium text-foreground">
-              Contrast
+              White Balance
             </Label>
-            <span className="text-sm text-muted-foreground">
-              {settings.contrast}%
-            </span>
+            <Select
+              value={settings.whiteBalance || "auto"}
+              onValueChange={applyWhiteBalance}
+            >
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {whiteBalanceOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Slider
-            value={[settings.contrast]}
-            onValueChange={(value) => updateSetting("contrast", value[0])}
-            max={100}
-            step={1}
-            className="w-full"
-          />
+
+          {/* Exposure */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <Label className="text-sm font-medium text-foreground">
+                Exposure
+              </Label>
+              <span className="text-sm text-muted-foreground font-mono">
+                {settings.exposure || 0}
+              </span>
+            </div>
+            <Slider
+              value={[settings.exposure || 0]}
+              onValueChange={(value) => applyExposure(value[0])}
+              min={-13}
+              max={1}
+              step={1}
+              className="w-full"
+            />
+          </div>
+
+          {/* Toggle Controls */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-foreground">
+                Night Mode
+              </Label>
+              <Switch
+                checked={settings.nightMode || false}
+                onCheckedChange={toggleNightMode}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-foreground">
+                Auto Focus
+              </Label>
+              <Switch
+                checked={settings.autoFocus !== false}
+                onCheckedChange={toggleAutoFocus}
+              />
+            </div>
+          </div>
         </div>
+
+        {/* Status */}
+        {isApplying && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            Applying camera settings...
+          </div>
+        )}
       </CardContent>
     </Card>
   );

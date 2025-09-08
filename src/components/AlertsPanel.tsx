@@ -70,14 +70,14 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({
   };
 
   return (
-    <Card className="gradient-card border-border">
-      <CardHeader>
+    <Card className="gradient-card border-border shadow-lg">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-foreground">
-            <AlertTriangle className="w-5 h-5 text-surveillance-amber" />
-            Security Alerts
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <span className="text-lg">Security Alerts</span>
             {alerts.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-2 animate-pulse">
                 {alerts.length}
               </Badge>
             )}
@@ -87,7 +87,7 @@ export const AlertsPanel: React.FC<AlertsPanelProps> = ({
               variant="outline"
               size="sm"
               onClick={onClearAlerts}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="w-4 h-4" />
               Clear All

@@ -45,15 +45,25 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
   };
 
   return (
-    <Card className="gradient-card border-border">
-      <CardHeader>
+    <Card className="gradient-card border-border shadow-lg">
+      <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-foreground">
           {settings.enabled ? (
-            <Eye className="w-5 h-5 text-surveillance-green" />
+            <Eye className="w-5 h-5 text-green-500" />
           ) : (
             <EyeOff className="w-5 h-5 text-muted-foreground" />
           )}
-          Motion Detection
+          <span className="text-lg">Motion Detection</span>
+          <div className="ml-auto flex items-center gap-1">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                settings.enabled ? "bg-green-500 animate-pulse" : "bg-gray-400"
+              }`}
+            ></div>
+            <span className="text-xs text-muted-foreground">
+              {settings.enabled ? "Active" : "Inactive"}
+            </span>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -71,12 +81,12 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
         {settings.enabled && (
           <>
             {/* Sensitivity */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
+            <div className="space-y-3 p-4 rounded-lg bg-muted/30">
+              <div className="flex justify-between items-center">
                 <Label className="text-sm font-medium text-foreground">
-                  Sensitivity
+                  Detection Sensitivity
                 </Label>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
                   {settings.sensitivity}%
                 </span>
               </div>
@@ -90,16 +100,27 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Low</span>
-                <span>High</span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Low
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  High
+                </span>
               </div>
             </div>
 
             {/* Record on Motion */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-foreground">
-                Record on Motion
-              </Label>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <div>
+                <Label className="text-sm font-medium text-foreground block">
+                  Auto Recording
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  Start recording when motion detected
+                </span>
+              </div>
               <Switch
                 checked={settings.recordOnMotion || false}
                 onCheckedChange={(checked) =>
@@ -109,10 +130,15 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
             </div>
 
             {/* Send to Telegram */}
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-foreground">
-                Send Images/Videos to Telegram
-              </Label>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <div>
+                <Label className="text-sm font-medium text-foreground block">
+                  Telegram Notifications
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  Send images/videos to Telegram
+                </span>
+              </div>
               <Switch
                 checked={settings.sendToTelegram || false}
                 onCheckedChange={(checked) =>

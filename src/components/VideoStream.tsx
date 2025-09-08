@@ -555,6 +555,12 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
               videoRef.current.crossOrigin = "anonymous";
             }
           }}
+          onLoadStart={() => {
+            // Update FPS counter when new frame loads
+            if ((window as any).updateStreamFps) {
+              (window as any).updateStreamFps();
+            }
+          }}
         />
 
         {/* Recording Indicator */}

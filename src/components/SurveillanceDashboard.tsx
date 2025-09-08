@@ -37,11 +37,17 @@ export const SurveillanceDashboard = () => {
   // Default settings
   const defaultCameraSettings = {
     resolution: "VGA",
-    brightness: 50,
-    contrast: 50,
+    brightness: 0,
+    contrast: 0,
     flipHorizontal: false,
     flipVertical: false,
     rotation: 0,
+    saturation: 0,
+    sharpness: 0,
+    exposure: 0,
+    whiteBalance: "auto",
+    nightMode: false,
+    autoFocus: true,
   };
 
   const defaultMotionSettings = {
@@ -125,43 +131,49 @@ export const SurveillanceDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="mx-auto max-w-[1400px] p-4 lg:p-6">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                 ESP32-CAM Surveillance Dashboard
               </h1>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground text-lg">
                 Advanced home security monitoring and control system
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearAllData}
-              className="flex items-center gap-2 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear All Data
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllData}
+                className="flex items-center gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="w-4 h-4" />
+                Clear All Data
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* Video Stream - Main Content */}
-          <div className="lg:col-span-8">
-            <Card className="gradient-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-success rounded-full animate-pulse"></div>
-                  Live Video Stream
+          <div className="xl:col-span-8">
+            <Card className="gradient-card border-border shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
+                  <span className="text-xl">Live Video Stream</span>
+                  <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>HD Quality</span>
+                  </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <VideoStream
                   streamUrl={streamUrl}
                   settings={cameraSettings}
@@ -178,7 +190,7 @@ export const SurveillanceDashboard = () => {
           </div>
 
           {/* Controls Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="xl:col-span-4 space-y-6">
             {/* Status Panel */}
             <StatusPanel
               cameraUrl={streamUrl}
@@ -194,12 +206,14 @@ export const SurveillanceDashboard = () => {
             <CameraControls
               settings={cameraSettings}
               onSettingsChange={setCameraSettings}
+              cameraUrl={streamUrl}
             />
 
             {/* Stream Settings */}
-            <Card className="gradient-card border-border">
-              <CardHeader>
-                <CardTitle className="text-foreground">
+            <Card className="gradient-card border-border shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-foreground flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   Stream Settings
                 </CardTitle>
               </CardHeader>
@@ -230,15 +244,15 @@ export const SurveillanceDashboard = () => {
             />
 
             {/* Detection Settings */}
-            {/* <DetectionSettings
+            <DetectionSettings
               settings={detectionSettings}
               onSettingsChange={setDetectionSettings}
-            /> */}
+            />
           </div>
         </div>
 
         {/* Alerts Panel - Full Width */}
-        <div className="mt-6">
+        <div className="mt-8">
           <AlertsPanel alerts={alerts} onClearAlerts={() => setAlerts([])} />
         </div>
       </div>
