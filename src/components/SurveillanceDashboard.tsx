@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import PanTilePanel from "./PanTilePanel";
 
 // Local storage utility functions
 const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
@@ -75,13 +76,12 @@ export const SurveillanceDashboard = () => {
     loadFromStorage("surveillance-detection-settings", defaultDetectionSettings)
   );
 
-  const [streamUrl, setStreamUrl] = useState(() =>
-    loadFromStorage("surveillance-stream-url", "http://192.168.1.59:80/stream")
-  );
   const [alerts, setAlerts] = useState<any[]>(() =>
     loadFromStorage("surveillance-alerts", [])
   );
   const [isRecording, setIsRecording] = useState(false);
+
+  const streamUrl = "http://192.168.1.59:80/stream";
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -122,7 +122,6 @@ export const SurveillanceDashboard = () => {
     setCameraSettings(defaultCameraSettings);
     setMotionSettings(defaultMotionSettings);
     setDetectionSettings(defaultDetectionSettings);
-    setStreamUrl("http://192.168.1.59:80/stream");
     setAlerts([]);
 
     toast.success("All data cleared", {
@@ -187,6 +186,7 @@ export const SurveillanceDashboard = () => {
                 />
               </CardContent>
             </Card>
+            <PanTilePanel />
           </div>
 
           {/* Controls Sidebar */}
@@ -217,24 +217,6 @@ export const SurveillanceDashboard = () => {
                   Stream Settings
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="stream-url"
-                    className="text-sm font-medium text-foreground"
-                  >
-                    Camera Stream URL
-                  </Label>
-                  <Input
-                    id="stream-url"
-                    type="url"
-                    value={streamUrl}
-                    onChange={(e) => setStreamUrl(e.target.value)}
-                    placeholder="http://192.168.1.59:80/stream"
-                    className="w-full"
-                  />
-                </div>
-              </CardContent>
             </Card>
 
             {/* Motion Detection */}

@@ -77,12 +77,9 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 
   // Send camera control command to ESP32-CAM
   const sendCameraCommand = async (command: string, value?: any) => {
-    if (!cameraUrl) return;
-
     try {
       setIsApplying(true);
-      const url = new URL(cameraUrl);
-      const controlUrl = `${url.protocol}//${url.host}/control?var=${command}&val=${value}`;
+      const controlUrl = `http://192.168.1.59:81/control?var=${command}&val=${value}`;
 
       const response = await fetch(controlUrl, {
         method: "GET",
@@ -91,6 +88,27 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
 
       toast.success("Camera setting applied", {
         description: `${command} set to ${value}`,
+      });
+    } catch (error) {
+      toast.error("Failed to apply setting", {
+        description: "Camera may not support this control",
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+  const sendFlashCommand = async (state: string) => {
+    try {
+      setIsApplying(true);
+      const controlUrl = `http://192.168.1.59:81/flash?state=${state}`;
+
+      const response = await fetch(controlUrl, {
+        method: "GET",
+        mode: "no-cors",
+      });
+
+      toast.success("Camera setting applied", {
+        description: `Flash set to ${state}`,
       });
     } catch (error) {
       toast.error("Failed to apply setting", {
@@ -144,9 +162,14 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
     sendCameraCommand("awb", whiteBalance === "auto" ? 1 : 0);
   };
 
-  const toggleNightMode = (enabled: boolean) => {
+  const toggleNightMode = async (enabled: boolean) => {
     updateSetting("nightMode", enabled);
-    sendCameraCommand("night_vision", enabled ? 1 : 0);
+    // sendCameraCommand("night_vision", enabled ? 1 : 0);
+    if (enabled) {
+      await sendFlashCommand("on");
+    } else {
+      await sendFlashCommand("off");
+    }
   };
 
   const toggleAutoFocus = (enabled: boolean) => {
@@ -199,7 +222,7 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Resolution */}
-        <div className="space-y-2">
+        <div className="space-y-2 hidden">
           <Label className="text-sm font-medium text-foreground flex items-center gap-2">
             <Monitor className="w-4 h-4" />
             Resolution
@@ -288,119 +311,6 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
               className="w-full"
             />
           </div>
-
-          {/* Contrast */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Contrast className="w-4 h-4" />
-                Contrast
-              </Label>
-              <span className="text-sm text-muted-foreground font-mono">
-                {settings.contrast || 0}
-              </span>
-            </div>
-            <Slider
-              value={[settings.contrast || 0]}
-              onValueChange={(value) => applyContrast(value[0])}
-              min={-2}
-              max={2}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
-          {/* Saturation */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Saturation
-              </Label>
-              <span className="text-sm text-muted-foreground font-mono">
-                {settings.saturation || 0}
-              </span>
-            </div>
-            <Slider
-              value={[settings.saturation || 0]}
-              onValueChange={(value) => applySaturation(value[0])}
-              min={-2}
-              max={2}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
-          {/* Sharpness */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Focus className="w-4 h-4" />
-                Sharpness
-              </Label>
-              <span className="text-sm text-muted-foreground font-mono">
-                {settings.sharpness || 0}
-              </span>
-            </div>
-            <Slider
-              value={[settings.sharpness || 0]}
-              onValueChange={(value) => applySharpness(value[0])}
-              min={-2}
-              max={2}
-              step={1}
-              className="w-full"
-            />
-          </div>
-        </div>
-
-        {/* Advanced Controls */}
-        <div className="space-y-4">
-          <Label className="text-sm font-semibold text-foreground">
-            Advanced
-          </Label>
-
-          {/* White Balance */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-foreground">
-              White Balance
-            </Label>
-            <Select
-              value={settings.whiteBalance || "auto"}
-              onValueChange={applyWhiteBalance}
-            >
-              <SelectTrigger className="bg-input border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {whiteBalanceOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Exposure */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium text-foreground">
-                Exposure
-              </Label>
-              <span className="text-sm text-muted-foreground font-mono">
-                {settings.exposure || 0}
-              </span>
-            </div>
-            <Slider
-              value={[settings.exposure || 0]}
-              onValueChange={(value) => applyExposure(value[0])}
-              min={-13}
-              max={1}
-              step={1}
-              className="w-full"
-            />
-          </div>
-
           {/* Toggle Controls */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center justify-between">
@@ -410,15 +320,6 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
               <Switch
                 checked={settings.nightMode || false}
                 onCheckedChange={toggleNightMode}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-foreground">
-                Auto Focus
-              </Label>
-              <Switch
-                checked={settings.autoFocus !== false}
-                onCheckedChange={toggleAutoFocus}
               />
             </div>
           </div>
