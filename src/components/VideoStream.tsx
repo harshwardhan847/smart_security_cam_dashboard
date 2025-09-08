@@ -53,6 +53,8 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
   const autoRecordingRef = useRef(false);
   const noMotionStopTimerRef = useRef<NodeJS.Timeout | null>(null);
   const NO_MOTION_STOP_MS = 10000; // stop after 10s without motion
+  // Store current motion settings for use in recording callbacks
+  const motionSettingsRef = useRef(motionSettings);
 
   // Recording functions
   const pickSupportedMimeType = (): string | undefined => {
@@ -136,18 +138,31 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
         });
 
         // If this was a motion-triggered recording, send video to Telegram if enabled
-        if (autoRecordingRef.current && motionSettings.sendToTelegram) {
+        console.log("Recording stopped:", {
+          autoRecording: autoRecordingRef.current,
+          sendToTelegram: motionSettingsRef.current.sendToTelegram,
+          blobSize: blob.size,
+        });
+
+        if (
+          autoRecordingRef.current &&
+          motionSettingsRef.current.sendToTelegram
+        ) {
+          console.log("Sending motion-triggered video to Telegram");
           const messageText = `🎥 <b>Motion Recording Complete</b>\n\n📅 Time: ${new Date().toLocaleString()}\n📹 Camera: ESP32-CAM Surveillance System\n⏱️ Duration: Motion-triggered recording\n\nThis video was automatically recorded due to detected motion.`;
           sendTelegramMessage(messageText, undefined, blob);
+        } else if (!autoRecordingRef.current) {
+          // Only download for manual recordings (not motion-triggered)
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `surveillance-${new Date().toISOString()}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
         }
 
-        // Always download the video for local storage
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `surveillance-${new Date().toISOString()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
+        // Reset auto recording flag after processing
+        autoRecordingRef.current = false;
         recordedChunksRef.current = [];
       };
 
@@ -220,6 +235,14 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
     videoBlob?: Blob
   ) => {
     try {
+      console.log("Sending Telegram message:", {
+        text: text.substring(0, 50) + "...",
+        hasImage: !!imageBlob,
+        hasVideo: !!videoBlob,
+        imageSize: imageBlob?.size,
+        videoSize: videoBlob?.size,
+      });
+
       const formData = new FormData();
       formData.append("text", text);
 
@@ -231,10 +254,17 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
         formData.append("video", videoBlob, "motion-recording.webm");
       }
 
-      await fetch(TELEGRAM_PROXY_ENDPOINT, {
+      const response = await fetch(TELEGRAM_PROXY_ENDPOINT, {
         method: "POST",
         body: formData,
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Telegram API error:", errorText);
+      } else {
+        console.log("Telegram message sent successfully");
+      }
     } catch (err) {
       console.error("Telegram message error", err);
     }
@@ -317,7 +347,6 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
           // Only auto-stop if this session was started by motion
           if (autoRecordingRef.current) {
             stopRecording();
-            autoRecordingRef.current = false;
             toast("Recording Stopped", { description: "No motion for 10s" });
           }
         }, NO_MOTION_STOP_MS);
@@ -468,7 +497,6 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
     // Manual toggle overrides auto mode
     if (isRecording) {
       stopRecording();
-      autoRecordingRef.current = false;
       if (noMotionStopTimerRef.current) {
         clearTimeout(noMotionStopTimerRef.current);
         noMotionStopTimerRef.current = null;
@@ -488,6 +516,11 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
       });
     }
   };
+
+  // Update motion settings ref when settings change
+  useEffect(() => {
+    motionSettingsRef.current = motionSettings;
+  }, [motionSettings]);
 
   // Cleanup timers on unmount
   useEffect(() => {
