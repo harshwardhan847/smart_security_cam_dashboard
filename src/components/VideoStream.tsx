@@ -18,6 +18,7 @@ interface VideoStreamProps {
     sensitivity: number;
     zones: any[];
     recordOnMotion?: boolean;
+    sendToTelegram?: boolean;
   };
   detectionSettings: {
     faceDetection: boolean;
@@ -133,6 +134,14 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
         const blob = new Blob(recordedChunksRef.current, {
           type: mimeType || "video/webm",
         });
+
+        // If this was a motion-triggered recording, send video to Telegram if enabled
+        if (autoRecordingRef.current && motionSettings.sendToTelegram) {
+          const messageText = `🎥 <b>Motion Recording Complete</b>\n\n📅 Time: ${new Date().toLocaleString()}\n📹 Camera: ESP32-CAM Surveillance System\n⏱️ Duration: Motion-triggered recording\n\nThis video was automatically recorded due to detected motion.`;
+          sendTelegramMessage(messageText, undefined, blob);
+        }
+
+        // Always download the video for local storage
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -205,12 +214,26 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
   );
 
   // Telegram message sender - call your proxy here to secure bot token
-  const sendTelegramMessage = async (text: string) => {
+  const sendTelegramMessage = async (
+    text: string,
+    imageBlob?: Blob,
+    videoBlob?: Blob
+  ) => {
     try {
+      const formData = new FormData();
+      formData.append("text", text);
+
+      if (imageBlob) {
+        formData.append("image", imageBlob, "motion-detected.png");
+      }
+
+      if (videoBlob) {
+        formData.append("video", videoBlob, "motion-recording.webm");
+      }
+
       await fetch(TELEGRAM_PROXY_ENDPOINT, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: formData,
       });
     } catch (err) {
       console.error("Telegram message error", err);
@@ -232,7 +255,7 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
 
   // Motion detection handler
   const handleMotionDetection = useCallback(
-    (motionDetected: boolean) => {
+    async (motionDetected: boolean) => {
       if (motionDetected) {
         const now = Date.now();
         if (now - lastNotificationTime.current > detectionCooldown) {
@@ -250,8 +273,17 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
 
           onAlert(alert);
 
-          // Send Telegram notification
-          sendTelegramMessage("Motion detected by ESP32-CAM React app");
+          // Capture image for Telegram if enabled
+          if (motionSettings.sendToTelegram) {
+            const imageBlob = await captureImageForTelegram();
+
+            // Send Telegram notification with image
+            const messageText = `🚨 <b>Motion Detected!</b>\n\n📅 Time: ${new Date().toLocaleString()}\n📹 Camera: ESP32-CAM Surveillance System\n\nMotion has been detected in the monitored area.`;
+            sendTelegramMessage(messageText, imageBlob || undefined);
+          } else {
+            // Send text-only notification
+            sendTelegramMessage("Motion detected by ESP32-CAM React app");
+          }
 
           // Show browser notification
           showBrowserNotification(
@@ -296,6 +328,7 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
       detectionCooldown,
       isRecording,
       motionSettings.recordOnMotion,
+      motionSettings.sendToTelegram,
       startRecording,
       stopRecording,
     ]
@@ -391,6 +424,43 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
           description: "Screenshot saved successfully",
         });
       }
+    });
+  };
+
+  // Capture image for Telegram sending
+  const captureImageForTelegram = (): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (!videoRef.current) {
+        resolve(null);
+        return;
+      }
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+
+      // Use natural dimensions for better quality
+      const width = videoRef.current.naturalWidth || 640;
+      const height = videoRef.current.naturalHeight || 480;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw the current frame
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+
+      // Convert to blob
+      canvas.toBlob(
+        (blob) => {
+          resolve(blob);
+        },
+        "image/png",
+        0.9
+      );
     });
   };
 

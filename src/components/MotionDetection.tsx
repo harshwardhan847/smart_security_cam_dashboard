@@ -12,6 +12,7 @@ interface MotionDetectionProps {
     sensitivity: number;
     zones: any[];
     recordOnMotion?: boolean;
+    sendToTelegram?: boolean;
   };
   onSettingsChange: (settings: any) => void;
 }
@@ -103,6 +104,19 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
                 checked={settings.recordOnMotion || false}
                 onCheckedChange={(checked) =>
                   updateSetting("recordOnMotion", checked)
+                }
+              />
+            </div>
+
+            {/* Send to Telegram */}
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-foreground">
+                Send Images/Videos to Telegram
+              </Label>
+              <Switch
+                checked={settings.sendToTelegram || false}
+                onCheckedChange={(checked) =>
+                  updateSetting("sendToTelegram", checked)
                 }
               />
             </div>
