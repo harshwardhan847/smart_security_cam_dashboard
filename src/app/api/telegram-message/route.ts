@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
+console.log(TELEGRAM_BOT_TOKEN);
 export async function POST(request: NextRequest) {
   try {
     const { text } = await request.json();
