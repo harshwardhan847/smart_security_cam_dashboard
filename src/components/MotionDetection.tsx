@@ -11,6 +11,7 @@ interface MotionDetectionProps {
     enabled: boolean;
     sensitivity: number;
     zones: any[];
+    recordOnMotion?: boolean;
   };
   onSettingsChange: (settings: any) => void;
 }
@@ -93,8 +94,21 @@ export const MotionDetection: React.FC<MotionDetectionProps> = ({
               </div>
             </div>
 
+            {/* Record on Motion */}
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-foreground">
+                Record on Motion
+              </Label>
+              <Switch
+                checked={settings.recordOnMotion || false}
+                onCheckedChange={(checked) =>
+                  updateSetting("recordOnMotion", checked)
+                }
+              />
+            </div>
+
             {/* Detection Zones */}
-            <div className="space-y-3">
+            <div className="space-y-3 hidden">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-foreground">
                   Detection Zones

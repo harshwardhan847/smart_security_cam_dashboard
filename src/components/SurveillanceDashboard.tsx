@@ -21,6 +21,7 @@ export const SurveillanceDashboard = () => {
     enabled: false,
     sensitivity: 50,
     zones: [],
+    recordOnMotion: false,
   });
 
   const [detectionSettings, setDetectionSettings] = useState({
@@ -98,10 +99,10 @@ export const SurveillanceDashboard = () => {
             />
 
             {/* Detection Settings */}
-            <DetectionSettings
+            {/* <DetectionSettings
               settings={detectionSettings}
               onSettingsChange={setDetectionSettings}
-            />
+            /> */}
           </div>
         </div>
 

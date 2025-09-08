@@ -5,11 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Camera, Download, Video, Square, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
-// Configuration for Telegram notifications
-const TELEGRAM_BOT_TOKEN =
-  process.env.NEXT_PUBLIC_TELEGRAM_BOT_TOKEN || "<YOUR_BOT_TOKEN>";
-const TELEGRAM_CHAT_ID =
-  process.env.NEXT_PUBLIC_TELEGRAM_CHAT_ID || "<YOUR_CHAT_ID>";
 const TELEGRAM_PROXY_ENDPOINT = "/api/telegram-message"; // Safe backend proxy endpoint for Telegram
 interface VideoStreamProps {
   streamUrl: string;
@@ -22,6 +17,7 @@ interface VideoStreamProps {
     enabled: boolean;
     sensitivity: number;
     zones: any[];
+    recordOnMotion?: boolean;
   };
   detectionSettings: {
     faceDetection: boolean;
@@ -43,11 +39,132 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
 }) => {
   const videoRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const recordingCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingDrawRafRef = useRef<number | null>(null);
   const [detections, setDetections] = useState<any[]>([]);
   const [motionDetected, setMotionDetected] = useState(false);
   const lastNotificationTime = useRef(0);
   const detectionCooldown = 2000; // 2 seconds cooldown between notifications
   const lastImageData = useRef<ImageData | null>(null);
+  // Auto-stop recording when motion-triggered recording sees no motion for a while
+  const autoRecordingRef = useRef(false);
+  const noMotionStopTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const NO_MOTION_STOP_MS = 10000; // stop after 10s without motion
+
+  // Recording functions
+  const pickSupportedMimeType = (): string | undefined => {
+    const types = [
+      "video/webm;codecs=vp8,opus",
+      "video/webm;codecs=vp8",
+      "video/webm",
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp9",
+    ];
+    for (const t of types) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return undefined;
+  };
+
+  const startRecordingDrawLoop = () => {
+    if (!videoRef.current) return;
+
+    const draw = () => {
+      if (!recordingCanvasRef.current || !videoRef.current) return;
+      const rc = recordingCanvasRef.current;
+      const rctx = rc.getContext("2d");
+      if (!rctx) return;
+
+      // Keep canvas size in sync with image natural size
+      const w = videoRef.current.naturalWidth || 640;
+      const h = videoRef.current.naturalHeight || 480;
+      if (rc.width !== w || rc.height !== h) {
+        rc.width = w;
+        rc.height = h;
+      }
+      rctx.drawImage(videoRef.current, 0, 0, rc.width, rc.height);
+      recordingDrawRafRef.current = window.requestAnimationFrame(draw);
+    };
+    recordingDrawRafRef.current = window.requestAnimationFrame(draw);
+  };
+
+  const stopRecordingDrawLoop = () => {
+    if (recordingDrawRafRef.current !== null) {
+      window.cancelAnimationFrame(recordingDrawRafRef.current);
+      recordingDrawRafRef.current = null;
+    }
+  };
+
+  const startRecording = useCallback(() => {
+    try {
+      if (!videoRef.current) return;
+
+      // Create a dedicated offscreen canvas for recording
+      if (!recordingCanvasRef.current) {
+        recordingCanvasRef.current = document.createElement("canvas");
+      }
+
+      const rc = recordingCanvasRef.current;
+      const w = videoRef.current.naturalWidth || 640;
+      const h = videoRef.current.naturalHeight || 480;
+      rc.width = w;
+      rc.height = h;
+
+      // Start draw loop copying frames from <img> to canvas
+      startRecordingDrawLoop();
+
+      // Capture stream from the recording canvas
+      const stream = (rc as HTMLCanvasElement).captureStream(25);
+      const mimeType = pickSupportedMimeType();
+      mediaRecorderRef.current = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined
+      );
+      recordedChunksRef.current = [];
+
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        stopRecordingDrawLoop();
+        const blob = new Blob(recordedChunksRef.current, {
+          type: mimeType || "video/webm",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `surveillance-${new Date().toISOString()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        recordedChunksRef.current = [];
+      };
+
+      mediaRecorderRef.current.start();
+      onRecordingChange(true);
+    } catch (err) {
+      console.error("Failed to start recording", err);
+      toast.error("Recording Error", {
+        description: "Could not start recording",
+      });
+    }
+  }, [onRecordingChange]);
+
+  const stopRecording = useCallback(() => {
+    try {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+    } finally {
+      onRecordingChange(false);
+      stopRecordingDrawLoop();
+    }
+  }, [onRecordingChange]);
 
   // Motion detection function
   const detectMotion = useCallback(
@@ -151,9 +268,37 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
           // Reset motion detected after 5 seconds
           setTimeout(() => setMotionDetected(false), 5000);
         }
+
+        // Auto-start recording on first motion if not already recording and setting is enabled
+        if (!isRecording && motionSettings.recordOnMotion) {
+          autoRecordingRef.current = true;
+          startRecording();
+          toast("Recording Started", {
+            description: "Motion-triggered recording",
+          });
+        }
+
+        // Extend no-motion auto-stop timer on each motion
+        if (noMotionStopTimerRef.current)
+          clearTimeout(noMotionStopTimerRef.current);
+        noMotionStopTimerRef.current = setTimeout(() => {
+          // Only auto-stop if this session was started by motion
+          if (autoRecordingRef.current) {
+            stopRecording();
+            autoRecordingRef.current = false;
+            toast("Recording Stopped", { description: "No motion for 10s" });
+          }
+        }, NO_MOTION_STOP_MS);
       }
     },
-    [onAlert, detectionCooldown]
+    [
+      onAlert,
+      detectionCooldown,
+      isRecording,
+      motionSettings.recordOnMotion,
+      startRecording,
+      stopRecording,
+    ]
   );
 
   // Motion detection analysis
@@ -250,13 +395,37 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
   };
 
   const toggleRecording = () => {
-    onRecordingChange(!isRecording);
-    toast(isRecording ? "Recording Stopped" : "Recording Started", {
-      description: isRecording
-        ? "Video recording has been stopped"
-        : "Video recording has been started",
-    });
+    // Manual toggle overrides auto mode
+    if (isRecording) {
+      stopRecording();
+      autoRecordingRef.current = false;
+      if (noMotionStopTimerRef.current) {
+        clearTimeout(noMotionStopTimerRef.current);
+        noMotionStopTimerRef.current = null;
+      }
+      toast("Recording Stopped", {
+        description: "Video recording has been stopped",
+      });
+    } else {
+      startRecording();
+      autoRecordingRef.current = false; // manual session, don't auto-stop on timer
+      if (noMotionStopTimerRef.current) {
+        clearTimeout(noMotionStopTimerRef.current);
+        noMotionStopTimerRef.current = null;
+      }
+      toast("Recording Started", {
+        description: "Video recording has been started",
+      });
+    }
   };
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (noMotionStopTimerRef.current)
+        clearTimeout(noMotionStopTimerRef.current);
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
