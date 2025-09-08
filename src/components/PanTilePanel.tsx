@@ -105,7 +105,7 @@ export default function ServoControlCard() {
   };
 
   return (
-    <Card className="max-w-md mx-auto p-6 shadow-xl rounded-lg bg-white dark:bg-gray-900">
+    <Card className="gradient-card border-border shadow-lg">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-center">
           Servo Control
@@ -115,7 +115,7 @@ export default function ServoControlCard() {
         <div className="flex justify-center mb-6">
           <Button
             aria-label="Tilt Up"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canTiltUp || loading}
             onClick={tiltUp}

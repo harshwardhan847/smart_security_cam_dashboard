@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { VideoStream } from "./VideoStream";
 import { CameraControls } from "./CameraControls";
 import { MotionDetection } from "./MotionDetection";
-import { DetectionSettings } from "./DetectionSettings";
 import { AlertsPanel } from "./AlertsPanel";
 import { StatusPanel } from "./StatusPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -160,7 +157,7 @@ export const SurveillanceDashboard = () => {
         {/* Main Grid Layout */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* Video Stream - Main Content */}
-          <div className="xl:col-span-8">
+          <div className="xl:col-span-8 space-y-4">
             <Card className="gradient-card border-border shadow-lg">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-3">
@@ -186,7 +183,15 @@ export const SurveillanceDashboard = () => {
                 />
               </CardContent>
             </Card>
-            <PanTilePanel />
+            <div className="grid md:grid-cols-2 gap-4">
+              <PanTilePanel />
+              {/* Camera Controls */}
+              <CameraControls
+                settings={cameraSettings}
+                onSettingsChange={setCameraSettings}
+                cameraUrl={streamUrl}
+              />
+            </div>
           </div>
 
           {/* Controls Sidebar */}
@@ -200,13 +205,6 @@ export const SurveillanceDashboard = () => {
                 detectionSettings.faceDetection ||
                 detectionSettings.animalDetection
               }
-            />
-
-            {/* Camera Controls */}
-            <CameraControls
-              settings={cameraSettings}
-              onSettingsChange={setCameraSettings}
-              cameraUrl={streamUrl}
             />
 
             {/* Stream Settings */}
@@ -226,10 +224,10 @@ export const SurveillanceDashboard = () => {
             />
 
             {/* Detection Settings */}
-            <DetectionSettings
+            {/* <DetectionSettings
               settings={detectionSettings}
               onSettingsChange={setDetectionSettings}
-            />
+            /> */}
           </div>
         </div>
 

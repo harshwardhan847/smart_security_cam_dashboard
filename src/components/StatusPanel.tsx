@@ -10,10 +10,6 @@ import {
   Brain,
   Video,
   Clock,
-  Signal,
-  HardDrive,
-  Cpu,
-  MemoryStick,
 } from "lucide-react";
 
 interface StatusPanelProps {
@@ -29,16 +25,9 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
   motionEnabled,
   detectionEnabled,
 }) => {
-  const [isOnline, setIsOnline] = useState(false);
   const [uptime, setUptime] = useState("00:00:00");
-  const [signalStrength, setSignalStrength] = useState(0);
-  const [streamFps, setStreamFps] = useState(0);
-  const [memoryUsage, setMemoryUsage] = useState(0);
-  const [cpuUsage, setCpuUsage] = useState(0);
-  const [diskUsage, setDiskUsage] = useState(0);
   const startTimeRef = useRef(Date.now());
-  const frameCountRef = useRef(0);
-  const lastFpsTimeRef = useRef(Date.now());
+  const isOnline = true;
 
   // Real uptime counter
   useEffect(() => {
@@ -55,77 +44,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
-
-  // Real connectivity check
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const url = new URL(cameraUrl);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-        const response = await fetch(`${url.protocol}//${url.host}/`, {
-          method: "HEAD",
-          signal: controller.signal,
-          mode: "no-cors",
-        });
-
-        clearTimeout(timeoutId);
-        setIsOnline(true);
-        setSignalStrength(85 + Math.floor(Math.random() * 15)); // 85-100%
-      } catch (error) {
-        setIsOnline(false);
-        setSignalStrength(0);
-      }
-    };
-
-    checkConnection();
-    const interval = setInterval(checkConnection, 10000); // Check every 10 seconds
-    return () => clearInterval(interval);
-  }, [cameraUrl]);
-
-  // Real system metrics
-  useEffect(() => {
-    const updateSystemMetrics = () => {
-      // Memory usage (simulated based on browser performance)
-      if ("memory" in performance) {
-        const memory = (performance as any).memory;
-        const used = memory.usedJSHeapSize / memory.jsHeapSizeLimit;
-        setMemoryUsage(Math.round(used * 100));
-      } else {
-        setMemoryUsage(Math.floor(Math.random() * 30) + 20); // 20-50%
-      }
-
-      // CPU usage (simulated)
-      setCpuUsage(Math.floor(Math.random() * 40) + 10); // 10-50%
-
-      // Disk usage (simulated)
-      setDiskUsage(Math.floor(Math.random() * 20) + 30); // 30-50%
-    };
-
-    updateSystemMetrics();
-    const interval = setInterval(updateSystemMetrics, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // FPS calculation
-  const updateFps = () => {
-    frameCountRef.current++;
-    const now = Date.now();
-    if (now - lastFpsTimeRef.current >= 1000) {
-      setStreamFps(frameCountRef.current);
-      frameCountRef.current = 0;
-      lastFpsTimeRef.current = now;
-    }
-  };
-
-  // Expose FPS update function globally for VideoStream to use
-  useEffect(() => {
-    (window as any).updateStreamFps = updateFps;
-    return () => {
-      delete (window as any).updateStreamFps;
-    };
   }, []);
 
   const getSignalColor = (strength: number) => {
@@ -174,30 +92,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
           >
             {isOnline ? "Online" : "Offline"}
           </Badge>
-        </div>
-
-        {/* Signal Strength & FPS */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Signal className={`w-4 h-4 ${getSignalColor(signalStrength)}`} />
-              <span className="text-sm font-medium text-foreground">
-                Signal
-              </span>
-            </div>
-            <span
-              className={`text-sm font-bold ${getSignalColor(signalStrength)}`}
-            >
-              {signalStrength}%
-            </span>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2">
-              <Video className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-medium text-foreground">FPS</span>
-            </div>
-            <span className="text-sm font-bold text-blue-500">{streamFps}</span>
-          </div>
         </div>
 
         <Separator />
@@ -262,76 +156,6 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
             >
               {detectionEnabled ? "ON" : "OFF"}
             </Badge>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* System Metrics */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground">
-            System Metrics
-          </h4>
-
-          {/* CPU Usage */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">CPU</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-green-500 to-red-500 transition-all duration-300"
-                  style={{ width: `${cpuUsage}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-mono text-muted-foreground w-8 text-right">
-                {cpuUsage}%
-              </span>
-            </div>
-          </div>
-
-          {/* Memory Usage */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MemoryStick className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                Memory
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-                  style={{ width: `${memoryUsage}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-mono text-muted-foreground w-8 text-right">
-                {memoryUsage}%
-              </span>
-            </div>
-          </div>
-
-          {/* Disk Usage */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <HardDrive className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                Storage
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-300"
-                  style={{ width: `${diskUsage}%` }}
-                ></div>
-              </div>
-              <span className="text-sm font-mono text-muted-foreground w-8 text-right">
-                {diskUsage}%
-              </span>
-            </div>
           </div>
         </div>
 

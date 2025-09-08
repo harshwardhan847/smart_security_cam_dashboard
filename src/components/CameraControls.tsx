@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,19 +11,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import {
   Settings,
   RotateCw,
   FlipHorizontal,
   FlipVertical,
   Sun,
-  Contrast,
-  Focus,
-  Zap,
-  Camera,
   Monitor,
-  Wifi,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -65,14 +59,6 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
     { value: "SVGA", label: "SVGA (800x600)", width: 800, height: 600 },
     { value: "XGA", label: "XGA (1024x768)", width: 1024, height: 768 },
     { value: "UXGA", label: "UXGA (1600x1200)", width: 1600, height: 1200 },
-  ];
-
-  const whiteBalanceOptions = [
-    { value: "auto", label: "Auto" },
-    { value: "sunny", label: "Sunny" },
-    { value: "cloudy", label: "Cloudy" },
-    { value: "office", label: "Office" },
-    { value: "home", label: "Home" },
   ];
 
   // Send camera control command to ESP32-CAM
