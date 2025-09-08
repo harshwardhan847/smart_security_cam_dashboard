@@ -132,7 +132,7 @@ export default function ServoControlCard() {
         <div className="flex justify-between mb-6">
           <Button
             aria-label="Pan Left"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canPanLeft || loading}
             onClick={panLeft}
@@ -147,7 +147,7 @@ export default function ServoControlCard() {
           </Button>
           <Button
             aria-label="Pan Right"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canPanRight || loading}
             onClick={panRight}
@@ -164,7 +164,7 @@ export default function ServoControlCard() {
         <div className="flex justify-center mb-6">
           <Button
             aria-label="Tilt Down"
-            variant="outline"
+            variant="secondary"
             size="icon"
             disabled={!canTiltDown || loading}
             onClick={tiltDown}
@@ -229,7 +229,7 @@ export default function ServoControlCard() {
         <Button
           onClick={reset}
           disabled={loading}
-          variant="outline"
+          variant="secondary"
           className="flex items-center gap-1"
         >
           <RefreshCwIcon className="w-5 h-5" />

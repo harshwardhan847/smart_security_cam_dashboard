@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import PanTilePanel from "./PanTilePanel";
+import { ModeToggle } from "./ModeToggle";
 
 // Local storage utility functions
 const loadFromStorage = <T,>(key: string, defaultValue: T): T => {
@@ -150,6 +151,7 @@ export const SurveillanceDashboard = () => {
                 <Trash2 className="w-4 h-4" />
                 Clear All Data
               </Button>
+              <ModeToggle />
             </div>
           </div>
         </div>
