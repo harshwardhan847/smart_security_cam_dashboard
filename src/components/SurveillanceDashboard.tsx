@@ -186,7 +186,11 @@ export const SurveillanceDashboard = () => {
               </CardContent>
             </Card>
             <div className="grid md:grid-cols-2 gap-4">
-              <PanTilePanel />
+              {/* Motion Detection */}
+              <MotionDetection
+                settings={motionSettings}
+                onSettingsChange={setMotionSettings}
+              />
               {/* Camera Controls */}
               <CameraControls
                 settings={cameraSettings}
@@ -199,6 +203,7 @@ export const SurveillanceDashboard = () => {
           {/* Controls Sidebar */}
           <div className="xl:col-span-4 space-y-6">
             {/* Status Panel */}
+            <PanTilePanel />
             <StatusPanel
               cameraUrl={streamUrl}
               isRecording={isRecording}
@@ -207,22 +212,6 @@ export const SurveillanceDashboard = () => {
                 detectionSettings.faceDetection ||
                 detectionSettings.animalDetection
               }
-            />
-
-            {/* Stream Settings */}
-            <Card className="gradient-card border-border shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-foreground flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  Stream Settings
-                </CardTitle>
-              </CardHeader>
-            </Card>
-
-            {/* Motion Detection */}
-            <MotionDetection
-              settings={motionSettings}
-              onSettingsChange={setMotionSettings}
             />
 
             {/* Detection Settings */}

@@ -141,7 +141,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
               {motionEnabled ? "ON" : "OFF"}
             </Badge>
           </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+          <div className="flex hidden items-center justify-between p-3 rounded-lg bg-muted/30">
             <div className="flex items-center gap-2">
               <Brain
                 className={`w-4 h-4 ${
@@ -175,7 +175,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
             </span>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1 hidden">
             <span className="text-sm font-medium text-foreground">
               Camera IP
             </span>
