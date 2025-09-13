@@ -31,22 +31,25 @@ export default function ServoControlCard() {
   const TILT_STEP = 10;
 
   async function sendServoCommand(pan: number | null, tilt: number | null) {
+    console.log(pan, tilt);
     setLoading(true);
-    try {
-      if (pan !== null) {
+
+    if (pan !== null) {
+      try {
         await fetch(`${API_BASE_URL}/pan?value=${pan}`, {
           method: "GET",
         });
-      }
-      if (tilt !== null) {
-        await fetch(`${API_BASE_URL}/tilt?value=${pan}`, {
+      } catch {}
+    }
+    if (tilt !== null) {
+      try {
+        await fetch(`${API_BASE_URL}/tilt?value=${tilt}`, {
           method: "GET",
         });
-      }
-    } catch {
-    } finally {
-      setLoading(false);
+      } catch {}
     }
+
+    setLoading(false);
   }
 
   const startContinuousChange = (

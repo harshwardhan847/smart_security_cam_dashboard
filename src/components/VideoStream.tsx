@@ -327,6 +327,19 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
             duration: 3000,
           });
 
+          try {
+            let value = "off";
+            for (let i = 1; i <= 16; i++) {
+              setTimeout(() => {
+                value = i % 2 === 0 ? "off" : "on";
+                fetch(`http://192.168.1.59:81/buzzer?state=${value}`);
+              }, i * 200);
+            }
+            fetch(`http://192.168.1.59:81/buzzer?state=off`);
+          } catch (err) {
+            fetch(`http://192.168.1.59:81/buzzer?state=off`);
+          }
+
           // Reset motion detected after 5 seconds
           setTimeout(() => setMotionDetected(false), 5000);
         }
