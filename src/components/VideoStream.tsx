@@ -332,12 +332,18 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
             for (let i = 1; i <= 16; i++) {
               setTimeout(() => {
                 value = i % 2 === 0 ? "off" : "on";
-                fetch(`http://192.168.1.59:81/buzzer?state=${value}`);
+                fetch(
+                  `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81/buzzer?state=${value}`
+                );
               }, i * 200);
             }
-            fetch(`http://192.168.1.59:81/buzzer?state=off`);
+            fetch(
+              `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81/buzzer?state=off`
+            );
           } catch (err) {
-            fetch(`http://192.168.1.59:81/buzzer?state=off`);
+            fetch(
+              `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81/buzzer?state=off`
+            );
           }
 
           // Reset motion detected after 5 seconds

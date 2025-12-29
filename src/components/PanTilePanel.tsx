@@ -18,7 +18,7 @@ import {
   RefreshCwIcon,
 } from "lucide-react";
 
-const API_BASE_URL = "http://192.168.1.59:81"; // replace with your ESP32 IP
+const API_BASE_URL = `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81`; // replace with your ESP32 IP
 
 export default function ServoControlCard() {
   const [panAngle, setPanAngle] = useState(90);

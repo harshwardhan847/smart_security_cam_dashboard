@@ -65,7 +65,7 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
   const sendCameraCommand = async (command: string, value?: any) => {
     try {
       setIsApplying(true);
-      const controlUrl = `http://192.168.1.59:81/control?var=${command}&val=${value}`;
+      const controlUrl = `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81/control?var=${command}&val=${value}`;
 
       const response = await fetch(controlUrl, {
         method: "GET",
@@ -86,7 +86,7 @@ export const CameraControls: React.FC<CameraControlsProps> = ({
   const sendFlashCommand = async (state: string) => {
     try {
       setIsApplying(true);
-      const controlUrl = `http://192.168.1.59:81/flash?state=${state}`;
+      const controlUrl = `http://${process.env.NEXT_PUBLIC_STREAM_URL}:81/flash?state=${state}`;
 
       const response = await fetch(controlUrl, {
         method: "GET",

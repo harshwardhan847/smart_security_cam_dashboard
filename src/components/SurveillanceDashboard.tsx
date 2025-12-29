@@ -79,7 +79,7 @@ export const SurveillanceDashboard = () => {
   );
   const [isRecording, setIsRecording] = useState(false);
 
-  const streamUrl = "http://192.168.1.59:80/stream";
+  const streamUrl = `http://${process.env.NEXT_PUBLIC_STREAM_URL}:80/stream`;
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
