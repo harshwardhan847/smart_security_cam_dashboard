@@ -6,6 +6,13 @@ import { AlertsPanel } from "./AlertsPanel";
 import { StatusPanel } from "./StatusPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import PanTilePanel from "./PanTilePanel";
@@ -78,8 +85,60 @@ export const SurveillanceDashboard = () => {
     loadFromStorage("surveillance-alerts", [])
   );
   const [isRecording, setIsRecording] = useState(false);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<
+    Array<{ deviceId: string; label: string }>
+  >([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(() =>
+    loadFromStorage("surveillance-selected-camera", null)
+  );
 
-  const streamUrl = `http://${process.env.NEXT_PUBLIC_STREAM_URL}:80/stream`;
+  // Initialize webcam stream
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    const start = async (deviceId?: string | null) => {
+      try {
+        const constraints = {
+          video: deviceId ? { deviceId: { exact: deviceId } } : true,
+          audio: false,
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        activeStream = stream;
+        setWebcamStream(stream);
+      } catch (err) {
+        console.error("Failed to access webcam", err);
+        toast.error("Webcam Access Error", {
+          description: "Please allow camera access or check permissions.",
+        });
+      }
+    };
+    start(selectedCameraId);
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [selectedCameraId]);
+
+  // Enumerate available cameras after permission is granted
+  useEffect(() => {
+    const enumerate = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices
+          .filter((d) => d.kind === "videoinput")
+          .map((d, idx) => ({
+            deviceId: d.deviceId,
+            label: d.label || `Camera ${idx + 1}`,
+          }));
+        setAvailableCameras(cameras);
+      } catch (err) {
+        console.error("Failed to enumerate devices", err);
+      }
+    };
+    // Labels usually require permission; run when we have a stream
+    if (webcamStream) enumerate();
+  }, [webcamStream]);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -94,9 +153,17 @@ export const SurveillanceDashboard = () => {
     saveToStorage("surveillance-detection-settings", detectionSettings);
   }, [detectionSettings]);
 
+  // Persist that webcam is used (optional)
   useEffect(() => {
-    saveToStorage("surveillance-stream-url", streamUrl);
-  }, [streamUrl]);
+    if (webcamStream) {
+      saveToStorage("surveillance-stream-url", "webcam");
+    }
+  }, [webcamStream]);
+
+  // Persist selected camera
+  useEffect(() => {
+    saveToStorage("surveillance-selected-camera", selectedCameraId);
+  }, [selectedCameraId]);
 
   useEffect(() => {
     saveToStorage("surveillance-alerts", alerts);
@@ -151,6 +218,25 @@ export const SurveillanceDashboard = () => {
                 <Trash2 className="w-4 h-4" />
                 Clear All Data
               </Button>
+              {/* Camera Selector */}
+              <Select
+                value={selectedCameraId ?? "default"}
+                onValueChange={(val) =>
+                  setSelectedCameraId(val === "default" ? null : val)
+                }
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Select Camera" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">System Default</SelectItem>
+                  {availableCameras.map((cam) => (
+                    <SelectItem key={cam.deviceId} value={cam.deviceId}>
+                      {cam.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <ModeToggle />
             </div>
           </div>
@@ -173,7 +259,7 @@ export const SurveillanceDashboard = () => {
               </CardHeader>
               <CardContent className="p-6">
                 <VideoStream
-                  streamUrl={streamUrl}
+                  mediaStream={webcamStream || undefined}
                   settings={cameraSettings}
                   motionSettings={motionSettings}
                   detectionSettings={detectionSettings}
@@ -195,7 +281,6 @@ export const SurveillanceDashboard = () => {
               <CameraControls
                 settings={cameraSettings}
                 onSettingsChange={setCameraSettings}
-                cameraUrl={streamUrl}
               />
             </div>
           </div>
@@ -205,7 +290,7 @@ export const SurveillanceDashboard = () => {
             {/* Status Panel */}
             <PanTilePanel />
             <StatusPanel
-              cameraUrl={streamUrl}
+              cameraUrl={""}
               isRecording={isRecording}
               motionEnabled={motionSettings.enabled}
               detectionEnabled={

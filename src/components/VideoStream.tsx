@@ -7,7 +7,8 @@ import { toast } from "sonner";
 
 const TELEGRAM_PROXY_ENDPOINT = "/api/telegram-message"; // Safe backend proxy endpoint for Telegram
 interface VideoStreamProps {
-  streamUrl: string;
+  streamUrl?: string;
+  mediaStream?: MediaStream;
   settings: {
     flipHorizontal: boolean;
     flipVertical: boolean;
@@ -31,6 +32,7 @@ interface VideoStreamProps {
 
 export const VideoStream: React.FC<VideoStreamProps> = ({
   streamUrl,
+  mediaStream,
   settings,
   motionSettings,
   detectionSettings,
@@ -38,7 +40,7 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
   isRecording,
   onRecordingChange,
 }) => {
-  const videoRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef<HTMLVideoElement | HTMLImageElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recordingCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -71,6 +73,20 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
     return undefined;
   };
 
+  const getSourceSize = () => {
+    if (!videoRef.current) return { w: 640, h: 480 };
+    const el = videoRef.current;
+    const w =
+      ("videoWidth" in el
+        ? (el as HTMLVideoElement).videoWidth
+        : (el as HTMLImageElement).naturalWidth) || 640;
+    const h =
+      ("videoHeight" in el
+        ? (el as HTMLVideoElement).videoHeight
+        : (el as HTMLImageElement).naturalHeight) || 480;
+    return { w, h };
+  };
+
   const startRecordingDrawLoop = () => {
     if (!videoRef.current) return;
 
@@ -80,14 +96,19 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
       const rctx = rc.getContext("2d");
       if (!rctx) return;
 
-      // Keep canvas size in sync with image natural size
-      const w = videoRef.current.naturalWidth || 640;
-      const h = videoRef.current.naturalHeight || 480;
+      // Keep canvas size in sync with source size
+      const { w, h } = getSourceSize();
       if (rc.width !== w || rc.height !== h) {
         rc.width = w;
         rc.height = h;
       }
-      rctx.drawImage(videoRef.current, 0, 0, rc.width, rc.height);
+      rctx.drawImage(
+        videoRef.current as CanvasImageSource,
+        0,
+        0,
+        rc.width,
+        rc.height
+      );
       recordingDrawRafRef.current = window.requestAnimationFrame(draw);
     };
     recordingDrawRafRef.current = window.requestAnimationFrame(draw);
@@ -110,8 +131,7 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
       }
 
       const rc = recordingCanvasRef.current;
-      const w = videoRef.current.naturalWidth || 640;
-      const h = videoRef.current.naturalHeight || 480;
+      const { w, h } = getSourceSize();
       rc.width = w;
       rc.height = h;
 
@@ -409,8 +429,14 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
         return;
       }
 
-      const width = img.naturalWidth || 320;
-      const height = img.naturalHeight || 240;
+      const width =
+        "videoWidth" in img
+          ? (img as HTMLVideoElement).videoWidth || 320
+          : (img as HTMLImageElement).naturalWidth || 320;
+      const height =
+        "videoHeight" in img
+          ? (img as HTMLVideoElement).videoHeight || 240
+          : (img as HTMLImageElement).naturalHeight || 240;
 
       console.log("Processing frame", { width, height });
 
@@ -453,11 +479,18 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
-    canvas.width = 640;
-    canvas.height = 480;
+    const { w, h } = getSourceSize();
+    canvas.width = w;
+    canvas.height = h;
 
     // Draw the current frame
-    ctx?.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    ctx?.drawImage(
+      videoRef.current as CanvasImageSource,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
     // Download the image
     canvas.toBlob((blob) => {
@@ -492,14 +525,19 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
       }
 
       // Use natural dimensions for better quality
-      const width = videoRef.current.naturalWidth || 640;
-      const height = videoRef.current.naturalHeight || 480;
+      const { w, h } = getSourceSize();
 
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = w;
+      canvas.height = h;
 
       // Draw the current frame
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(
+        videoRef.current as CanvasImageSource,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
 
       // Convert to blob
       canvas.toBlob(
@@ -549,38 +587,81 @@ export const VideoStream: React.FC<VideoStreamProps> = ({
     };
   }, []);
 
+  // If webcam mediaStream is provided, bind it to the video element
+  useEffect(() => {
+    if (!mediaStream) return;
+    const el = videoRef.current as HTMLVideoElement | null;
+    if (!el) return;
+    try {
+      el.srcObject = mediaStream;
+      el.muted = true;
+      const playPromise = el.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise.catch(() => {
+          /* ignore */
+        });
+      }
+    } catch (err) {
+      console.error("Failed to attach mediaStream", err);
+    }
+  }, [mediaStream]);
+
   return (
     <div className="space-y-4">
       {/* Video Container */}
       <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-        <img
-          ref={videoRef}
-          src={streamUrl}
-          alt="ESP32-CAM Stream"
-          className="w-full h-full object-contain"
-          style={{
-            transform: getTransformStyle(),
-            border: motionDetected ? "3px solid red" : "3px solid green",
-          }}
-          crossOrigin="anonymous"
-          onError={() => {
-            toast.error("Stream Error", {
-              description: "Unable to connect to camera stream",
-            });
-          }}
-          onLoad={() => {
-            // Ensure image is ready for motion detection
-            if (videoRef.current) {
-              videoRef.current.crossOrigin = "anonymous";
-            }
-          }}
-          onLoadStart={() => {
-            // Update FPS counter when new frame loads
-            if ((window as any).updateStreamFps) {
-              (window as any).updateStreamFps();
-            }
-          }}
-        />
+        {mediaStream ? (
+          <video
+            ref={videoRef as React.RefObject<HTMLVideoElement>}
+            className="w-full h-full object-contain"
+            style={{
+              transform: getTransformStyle(),
+              border: motionDetected ? "3px solid red" : "3px solid green",
+            }}
+            playsInline
+            muted
+            onError={() => {
+              toast.error("Webcam Error", {
+                description: "Unable to access webcam stream",
+              });
+            }}
+            onCanPlay={() => {
+              if ((window as any).updateStreamFps) {
+                (window as any).updateStreamFps();
+              }
+            }}
+          />
+        ) : (
+          <img
+            ref={videoRef as React.RefObject<HTMLImageElement>}
+            src={streamUrl}
+            alt="ESP32-CAM Stream"
+            className="w-full h-full object-contain"
+            style={{
+              transform: getTransformStyle(),
+              border: motionDetected ? "3px solid red" : "3px solid green",
+            }}
+            crossOrigin="anonymous"
+            onError={() => {
+              toast.error("Stream Error", {
+                description: "Unable to connect to camera stream",
+              });
+            }}
+            onLoad={() => {
+              // Ensure image is ready for motion detection
+              const el = videoRef.current as HTMLImageElement | null;
+              if (el) {
+                el.crossOrigin = "anonymous";
+              }
+            }}
+            onLoadStart={() => {
+              // Update FPS counter when new frame loads
+              if ((window as any).updateStreamFps) {
+                (window as any).updateStreamFps();
+              }
+            }}
+          />
+        )}
 
         {/* Recording Indicator */}
         {isRecording && (

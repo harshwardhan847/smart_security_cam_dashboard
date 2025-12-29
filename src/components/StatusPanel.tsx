@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 interface StatusPanelProps {
-  cameraUrl: string;
+  cameraUrl?: string;
   isRecording: boolean;
   motionEnabled: boolean;
   detectionEnabled: boolean;
@@ -141,7 +141,7 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
               {motionEnabled ? "ON" : "OFF"}
             </Badge>
           </div>
-          <div className="flex hidden items-center justify-between p-3 rounded-lg bg-muted/30">
+          <div className="hidden items-center justify-between p-3 rounded-lg bg-muted/30">
             <div className="flex items-center gap-2">
               <Brain
                 className={`w-4 h-4 ${
@@ -179,9 +179,11 @@ export const StatusPanel: React.FC<StatusPanelProps> = ({
             <span className="text-sm font-medium text-foreground">
               Camera IP
             </span>
-            <p className="text-xs font-mono text-muted-foreground break-all bg-muted/50 p-2 rounded">
-              {new URL(cameraUrl).hostname}:{new URL(cameraUrl).port || "80"}
-            </p>
+            {cameraUrl ? (
+              <p className="text-xs font-mono text-muted-foreground break-all bg-muted/50 p-2 rounded">
+                {new URL(cameraUrl).hostname}:{new URL(cameraUrl).port || "80"}
+              </p>
+            ) : null}
           </div>
         </div>
       </CardContent>
